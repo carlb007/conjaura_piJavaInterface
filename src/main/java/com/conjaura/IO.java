@@ -1,5 +1,6 @@
 package com.conjaura;
 import java.io.*;
+import java.util.ArrayList;
 
 import com.pi4j.io.gpio.*;
 import com.pi4j.io.spi.SpiChannel;
@@ -8,7 +9,7 @@ import com.pi4j.io.spi.SpiFactory;
 import com.pi4j.io.spi.SpiMode;
 
 public class IO {
-    static final int SPI_SPEED = 16000000;
+    static final int SPI_SPEED = 15700000;
 
     final GpioController gpio = GpioFactory.getInstance();
     public static SpiDevice spi = null;
@@ -26,7 +27,7 @@ public class IO {
 
     public IO(){
         try {
-            spi = SpiFactory.getInstance(SpiChannel.CS0, SPI_SPEED, SpiMode.MODE_3);
+            spi = SpiFactory.getInstance(SpiChannel.CS0, SPI_SPEED, SpiMode.MODE_2);
         }
         catch(IOException e){
 
@@ -119,12 +120,14 @@ public class IO {
         }
     }
 
-    public static byte[] spiTransfer(byte data[]){
+    public static byte[] spiTransfer(byte[] data){
         try {
             byte[] result = spi.write(data);
+            //System.out.println("SPI Done");
             return result;
         }
         catch(IOException e){
+            System.out.println("SPI Error");
             return data;
         }
     }

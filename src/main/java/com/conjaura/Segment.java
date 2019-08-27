@@ -1,9 +1,10 @@
 package com.conjaura;
 
 import java.util.ArrayList;
+import java.util.Iterator;
 
 public class Segment {
-    static final int MAX_SEG_SIZE = 10240;
+    static final int MAX_SEG_SIZE = 2048;
 
     public static int totalSegments = 0;
     public static ArrayList<Segment> dataSegments = new ArrayList<Segment>();
@@ -23,18 +24,41 @@ public class Segment {
         this.startPanelID = start;
         this.endPanelID = (byte)(end-1);
         this.segmentDataSize = segSize;
-        dataStream = new ArrayList<Byte>(segSize);
+        this.dataStream = new ArrayList<Byte>(segSize);
 
-        System.out.println("SEGSIZE "+dataStream.size());
+        System.out.println("SEGSIZE "+this.dataStream.size()+" "+segSize);
         dataSegments.add(this);
     }
 
-    public int getSegmentLength(int id){
+    public static int getSegmentLength(int id){
         return dataSegments.get(id).segmentDataSize;
     }
 
-    public ArrayList<Byte> getSegmentData(int id){
-        return dataSegments.get(id).dataStream;
+    public static byte[] getSegmentData(int id){
+        int segLength = getSegmentLength(id);
+        byte[] returnData = new byte[segLength];
+        //System.out.println("Segment Len "+segLength+" id"+id);
+        ArrayList<Byte> Data = dataSegments.get(id).dataStream;
+        //segLength = Data.size();
+        //System.out.println("Segment Len "+segLength+" id"+id);
+        //System.out.println("Array Len "+returnData.length+" id"+id);
+        //System.out.println("Segment Dat "+Data);
+        for (int i = 0; i < segLength; i++){
+            //System.out.println("IDX "+i);
+            returnData[i] = Data.get(i).byteValue();
+        }
+        //System.out.println("Segment Return Dat "+returnData);
+        return returnData;
+    }
+
+    public static byte[] getSegmentLengths(){
+        byte[] segmentData = new byte[totalSegments*2];
+        int pos=0;
+        for(int i=0;i<totalSegments;i++){
+            segmentData[pos++] = (byte)((getSegmentLength(i)>>8) & 255);
+            segmentData[pos++] = (byte)(getSegmentLength(i) & 255);
+        }
+        return segmentData;
     }
 
     public static void createSegments(){
@@ -67,7 +91,10 @@ public class Segment {
             for (byte i = thisSegment.startPanelID; i < thisSegment.endPanelID + 1; i++) {
                 Panel thisPanel = Panel.getPanel(i);
                 thisSegment.dataStream.addAll(thisPanel.ledData);
+                thisSegment.dataStream.addAll(thisPanel.edgeData);
             }
+            int segLength = thisSegment.dataStream.size();
+            //System.out.println("Segment Len Create "+segLength);
         }
     }
 }

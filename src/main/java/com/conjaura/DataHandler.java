@@ -4,29 +4,24 @@ import java.util.ArrayList;
 
 public class DataHandler {
 
-    private static ArrayList<Integer> validWidthsHeights = new ArrayList<Integer>();
-    private static ArrayList<Byte> headerData = new ArrayList<Byte>(5);
-    private static ArrayList<Byte> configData;
+    private static byte[] headerData = new byte[]{0,0,0,0,0};
+    private static byte[] configData;
 
 
     static ConjauraSetup config = Init.getGlobalConfig();
 
-    public DataHandler(){
-        validWidthsHeights.add(8);
-        validWidthsHeights.add(16);
-        validWidthsHeights.add(24);
-        validWidthsHeights.add(32);
-    }
+    public DataHandler(){}
 
-    public static ArrayList<Byte> getConfigData(){
+    public static byte[] getConfigData(){
         return configData;
     }
 
     public static void buildConfig(){
-        configData = new ArrayList<Byte>(4*config.panelCount);
+        configData = new byte[4*config.panelCount];
+        int pos=0;
         for(int i=0;i<config.panelCount;i++){
             Panel thisPanel = Panel.getPanel(i);
-            if (validWidthsHeights.contains(thisPanel.width) && validWidthsHeights.contains(thisPanel.height)) {
+            if (thisPanel.width % 8 == 0 && thisPanel.height % 8 == 0 && thisPanel.width<=32 && thisPanel.height<=32) {
 
                 byte byte1 = 0;
                 byte byte2 = 0;
@@ -47,6 +42,8 @@ public class DataHandler {
                 bit2 = (byte)(config.scanLines.ordinal() << 1);
 
                 byte1 = (byte)(bits8_7 | bits6_5 | bits4_3 | bit2 | bit1);
+
+                //System.out.println( "Byte 1:"+byte1+", "+bits8_7+", "+bits6_5+", "+bits4_3+", "+bit2+" "+thisPanel.width);
 
                 // BYTE 2:
                 byte bit8= 0;
@@ -94,21 +91,22 @@ public class DataHandler {
 
                 byte4 = (byte)(bits8_6 | bits5_4 | bits3_2 | bit1);
 
-                configData.add(byte1);
-                configData.add(byte2);
-                configData.add(byte3);
-                configData.add(byte4);
+                configData[pos++]=byte1;
+                configData[pos++]=byte2;
+                configData[pos++]=byte3;
+                configData[pos++]=byte4;
 
             }
             else{
                 //ERROR
+                System.out.println("err");
             }
 
         }
     }
 
 
-    public static ArrayList<Byte> buildHeader(String[] mode,String[] submode) {
+    public static byte[] buildHeader(String mode,String submode) {
         byte hBits1_1 = 0;
         byte hBits2_1 = 0;
         byte hBits3and4_1 = 0;
@@ -146,15 +144,17 @@ public class DataHandler {
             else if (submode.equals("colourSetup")) {
                 hBits2_1 = 16;
                 byte hBits3_1 = 0;
+                byte hBits4_1 = 0;
                 if (config.colourMode == ColourModes.TRUE_COLOUR) {
                     hBits3_1 = 0;
                 } else if (config.colourMode == ColourModes.HIGH_COLOUR) {
                     hBits3_1 = 4;
+                    hBits4_1 = (byte) config.hcBias.ordinal();
                 } else if (config.colourMode == ColourModes.PALETTE_COLOUR) {
                     hBits3_1 = 8;
                 }
 
-                byte hBits4_1 = (byte) config.hcBias.ordinal();
+
 
                 hBits3and4_1 = (byte) (hBits3_1 | hBits4_1);
 
@@ -179,11 +179,11 @@ public class DataHandler {
         byte byte1 = (byte)(hBits1_1 | hBits2_1 | hBits3and4_1);
         byte byte2 = (byte)(hBits1_2 | hBits2_2);
         byte byte4 = (byte)(hBits1_4 | hBits2_4);
-        headerData.add(byte1);
-        headerData.add(byte2);
-        headerData.add(byte3);
-        headerData.add(byte4);
-        headerData.add(byte5);
+        headerData[0] = byte1;
+        headerData[1] = byte2;
+        headerData[2] = byte3;
+        headerData[3] = byte4;
+        headerData[4] = byte5;
 
         return headerData;
     }

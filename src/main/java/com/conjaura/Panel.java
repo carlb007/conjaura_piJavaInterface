@@ -5,7 +5,7 @@ import java.util.Collections;
 
 public class Panel {
     static int index = 0;
-    private static ArrayList<Panel> panels = new ArrayList<Panel>();
+    public static ArrayList<Panel> panels = new ArrayList<Panel>();
 
     int id;
     byte width;
@@ -117,6 +117,10 @@ public class Panel {
         }
         dataLength = dataSize+edgeSize;
         System.out.println("PANEL "+id+" Size:"+dataLength);
+    }
+
+    public static void setData(ArrayList<Byte> data, int id){
+        panels.get(id).ledData = data;
     }
 
 }
