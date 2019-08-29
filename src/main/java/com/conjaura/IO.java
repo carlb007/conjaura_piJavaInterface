@@ -9,7 +9,7 @@ import com.pi4j.io.spi.SpiFactory;
 import com.pi4j.io.spi.SpiMode;
 
 public class IO {
-    static final int SPI_SPEED = 15700000;
+    static final int SPI_SPEED = 20000000;
 
     final GpioController gpio = GpioFactory.getInstance();
     public static SpiDevice spi = null;
@@ -47,6 +47,12 @@ public class IO {
         setPanelPower("off");
         setFan("off");
         setLed("off");
+
+        setPanelPower("on");
+        setLed("blue");
+        resetMCU();
+        haltTilReady();
+        System.out.println("MCU Ready To Roll");
     }
 
     public static void setPanelPower(String state){
@@ -84,11 +90,12 @@ public class IO {
         sigOut.setState(PinState.LOW);
     }
 
-    public static void haltTilReady(){
+    public void haltTilReady(){
         while(!sigIn.isHigh()){
             setLed("red");
         }
         setLed("off");
+        pingMCU();  //CLEAR MCU SIG STATE
     }
 
     public static void setLed(String colour){
@@ -120,14 +127,13 @@ public class IO {
         }
     }
 
-    public static byte[] spiTransfer(byte[] data){
+    public byte[] spiTransfer(byte[] data){
         try {
             byte[] result = spi.write(data);
-            //System.out.println("SPI Done");
             return result;
         }
         catch(IOException e){
-            System.out.println("SPI Error");
+            System.out.println("SPI Error. "+e.getMessage());
             return data;
         }
     }

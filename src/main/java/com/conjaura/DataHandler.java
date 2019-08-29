@@ -1,25 +1,76 @@
 package com.conjaura;
 
-import java.util.ArrayList;
-
 public class DataHandler {
 
     private static byte[] headerData = new byte[]{0,0,0,0,0};
-    private static byte[] configData;
+    public static Segment segments;
+    public static IO dataIO;
 
-
-    static ConjauraSetup config = Init.getGlobalConfig();
-
-    public DataHandler(){}
-
-    public static byte[] getConfigData(){
-        return configData;
+    public DataHandler(){
+        segments = new Segment();
+        segments.createSegments();
+        segments.createSegmentData();
+        dataIO = new IO();
+        transferColourData();
+        transferGammaData();
+        transferPanelConfig();
+        prepForStreaming();
     }
 
-    public static void buildConfig(){
-        configData = new byte[4*config.panelCount];
+
+    private static void prepForStreaming(){
+        /*START OF INIT*/
+        dataIO.pingMCU();
+        buildAndTxHeader("data","");
+        dataIO.haltTilReady();
+        //SEND DATA SEGMENT LENGTHS
+        dataIO.spiTransfer(segments.getSegmentLengths());
+        dataIO.haltTilReady();
+        try{
+            Thread.sleep(100);
+        }catch(InterruptedException e){
+            System.out.println("Wait interupted "+e.getMessage());
+        }
+        System.out.println("Segment setup complete");
+    }
+
+    private static void transferPanelConfig(){
+        /*START OF PANEL CONFIG*/
+        dataIO.pingMCU();
+        buildAndTxHeader("config","panelSetup");
+        dataIO.haltTilReady();
+        //SEND CONFIG DATA
+        buildAndTxConfig();
+        dataIO.haltTilReady();
+        System.out.println("Config setup complete");
+    }
+
+    private static void transferColourData(){
+        /*START OF COLOUR MODE*/
+        dataIO.pingMCU();
+        buildAndTxHeader("config","colourSetup");
+        dataIO.haltTilReady();
+        if(ColourConf.getColourMode() == ColourModes.PALETTE_COLOUR){
+            dataIO.spiTransfer(ColourConf.getPaletteData());
+            dataIO.haltTilReady();
+        }
+        System.out.println("Colour setup complete");
+    }
+
+    public static void transferGammaData(){
+        /*START OF GAMMA MODE*/
+        dataIO.pingMCU();
+        buildAndTxHeader("config","gammaSetup");
+        dataIO.haltTilReady();
+        dataIO.spiTransfer(ColourConf.getGammaData());
+        dataIO.haltTilReady();
+        System.out.println("Gamma setup complete");
+    }
+
+    public static void buildAndTxConfig(){
+        byte[] configData = new byte[4*ConjauraSetup.getPanelCount()];
         int pos=0;
-        for(int i=0;i<config.panelCount;i++){
+        for(int i=0;i<ConjauraSetup.getPanelCount();i++){
             Panel thisPanel = Panel.getPanel(i);
             if (thisPanel.width % 8 == 0 && thisPanel.height % 8 == 0 && thisPanel.width<=32 && thisPanel.height<=32) {
 
@@ -39,7 +90,7 @@ public class DataHandler {
                 bits8_7 = (byte)((((int)thisPanel.width / 8)-1) << 6);
                 bits6_5 = (byte)((((int)thisPanel.height / 8)-1) << 4);
                 bits4_3 = (byte)(thisPanel.orientation.ordinal() << 2);
-                bit2 = (byte)(config.scanLines.ordinal() << 1);
+                bit2 = (byte)(thisPanel.scanLines.ordinal() << 1);
 
                 byte1 = (byte)(bits8_7 | bits6_5 | bits4_3 | bit2 | bit1);
 
@@ -98,15 +149,14 @@ public class DataHandler {
 
             }
             else{
-                //ERROR
-                System.out.println("err");
+                throw new IllegalArgumentException("Invalid panel size");
             }
-
         }
+        dataIO.spiTransfer(configData);
     }
 
 
-    public static byte[] buildHeader(String mode,String submode) {
+    public static void buildAndTxHeader(String mode,String submode) {
         byte hBits1_1 = 0;
         byte hBits2_1 = 0;
         byte hBits3and4_1 = 0;
@@ -136,8 +186,8 @@ public class DataHandler {
             hBits1_1 = (byte) 128;
             if (submode.equals("panelSetup")) {
                 hBits2_1 = 0;
-                byte3 = (byte) config.panelCount;
-                int configDataLen = config.panelCount * 4;
+                byte3 = (byte) ConjauraSetup.getPanelCount();
+                int configDataLen = ConjauraSetup.getPanelCount() * 4;
                 hBits2_4 = (byte) (configDataLen >> 8 & 63);
                 byte5 = (byte) (configDataLen & 255);
             }
@@ -145,12 +195,12 @@ public class DataHandler {
                 hBits2_1 = 16;
                 byte hBits3_1 = 0;
                 byte hBits4_1 = 0;
-                if (config.colourMode == ColourModes.TRUE_COLOUR) {
+                if (ColourConf.getColourMode() == ColourModes.TRUE_COLOUR) {
                     hBits3_1 = 0;
-                } else if (config.colourMode == ColourModes.HIGH_COLOUR) {
+                } else if (ColourConf.getColourMode() == ColourModes.HIGH_COLOUR) {
                     hBits3_1 = 4;
-                    hBits4_1 = (byte) config.hcBias.ordinal();
-                } else if (config.colourMode == ColourModes.PALETTE_COLOUR) {
+                    hBits4_1 = (byte) ColourConf.getHcBiasMode().ordinal();
+                } else if (ColourConf.getColourMode() == ColourModes.PALETTE_COLOUR) {
                     hBits3_1 = 8;
                 }
 
@@ -158,22 +208,22 @@ public class DataHandler {
 
                 hBits3and4_1 = (byte) (hBits3_1 | hBits4_1);
 
-                hBits2_2 = (byte) (config.bamBits.ordinal());
-                byte3 = (byte) (config.paletteSize);
+                hBits2_2 = (byte) (ConjauraSetup.getBamBits().ordinal());
+                byte3 = (byte) (ColourConf.getPaletteSize());
 
-                if (config.colourMode == ColourModes.PALETTE_COLOUR) {
-                    int paletteLen = (config.paletteSize + 1) * 3;
+                if (ColourConf.getColourMode() == ColourModes.PALETTE_COLOUR) {
+                    int paletteLen = (ColourConf.getPaletteSize() + 1) * 3;
                     hBits2_4 = (byte) (paletteLen >> 8 & 63);
                     byte5 = (byte) (paletteLen & 255);
                 }
             }
             else if (submode.equals("gammaSetup")) {
                 hBits2_1 = 32;
-                hBits2_4 = (byte) (config.gammaSize >> 8 & 63);
-                byte5 = (byte) (config.gammaSize & 255);
+                hBits2_4 = (byte) (ColourConf.getGammaSize() >> 8 & 63);
+                byte5 = (byte) (ColourConf.getGammaSize() & 255);
             }
             else {
-                config.lastError = "Invalid primary config mode";
+                throw new IllegalArgumentException("Invalid primary config mode");
             }
         }
         byte byte1 = (byte)(hBits1_1 | hBits2_1 | hBits3and4_1);
@@ -185,7 +235,7 @@ public class DataHandler {
         headerData[3] = byte4;
         headerData[4] = byte5;
 
-        return headerData;
+        dataIO.spiTransfer(headerData);
     }
 
 

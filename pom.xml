@@ -19,19 +19,7 @@
     <maven.compiler.target>1.7</maven.compiler.target>
   </properties>
 
-  <dependencies>
-    <dependency>
-      <groupId>junit</groupId>
-      <artifactId>junit</artifactId>
-      <version>4.12</version>
-      <scope>test</scope>
-    </dependency>
-    <dependency>
-      <groupId>com.pi4j</groupId>
-      <artifactId>pi4j-core</artifactId>
-      <version>1.3-SNAPSHOT</version>
-    </dependency>
-  </dependencies>
+
 
     <repositories>
         <repository>
@@ -90,13 +78,8 @@
                 <archive>
                     <manifest>
                         <addClasspath>true</addClasspath>
-                        <classpathPrefix>lib/</classpathPrefix>
                         <mainClass>com.conjaura.Init</mainClass>
                     </manifest>
-                    <manifestEntries>
-                        <!-- Add the pi4j in runtime. -->
-                        <Class-Path>dependency/pi4j-core-1.3-SNAPSHOT.jar</Class-Path>
-                    </manifestEntries>
                 </archive>
             </configuration>
         </plugin>
@@ -120,4 +103,25 @@
       </plugins>
     </pluginManagement>
   </build>
+
+    <dependencies>
+        <dependency>
+            <groupId>junit</groupId>
+            <artifactId>junit</artifactId>
+            <version>4.12</version>
+            <scope>test</scope>
+        </dependency>
+        <dependency>
+            <groupId>com.pi4j</groupId>
+            <artifactId>pi4j-core</artifactId>
+            <version>1.2</version>
+        </dependency>
+        <!-- https://mvnrepository.com/artifact/com.googlecode.json-simple/json-simple -->
+        <dependency>
+            <groupId>com.googlecode.json-simple</groupId>
+            <artifactId>json-simple</artifactId>
+            <version>1.1.1</version>
+        </dependency>
+
+    </dependencies>
 </project>

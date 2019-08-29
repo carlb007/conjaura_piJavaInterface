@@ -5,16 +5,13 @@ import java.util.Iterator;
 
 public class Segment {
     static final int MAX_SEG_SIZE = 2048;
-
     public static int totalSegments = 0;
     public static ArrayList<Segment> dataSegments = new ArrayList<Segment>();
-
     private byte startPanelID;
     private byte endPanelID;
     private int segmentDataSize;
     private ArrayList<Byte> dataStream;
 
-    static ConjauraSetup config = Init.getGlobalConfig();
 
     public Segment(){
         //NOTHING TO DO ON OBJ INIT
@@ -37,17 +34,10 @@ public class Segment {
     public static byte[] getSegmentData(int id){
         int segLength = getSegmentLength(id);
         byte[] returnData = new byte[segLength];
-        //System.out.println("Segment Len "+segLength+" id"+id);
         ArrayList<Byte> Data = dataSegments.get(id).dataStream;
-        //segLength = Data.size();
-        //System.out.println("Segment Len "+segLength+" id"+id);
-        //System.out.println("Array Len "+returnData.length+" id"+id);
-        //System.out.println("Segment Dat "+Data);
         for (int i = 0; i < segLength; i++){
-            //System.out.println("IDX "+i);
             returnData[i] = Data.get(i).byteValue();
         }
-        //System.out.println("Segment Return Dat "+returnData);
         return returnData;
     }
 
@@ -64,10 +54,10 @@ public class Segment {
     public static void createSegments(){
         byte lastPanel = 0;
         byte startPanel = 0;
-        while(lastPanel<config.panelCount) {
+        while(lastPanel<ConjauraSetup.getPanelCount()) {
             int segmentSize = 0;
             byte start = lastPanel;
-            for (byte i = start; i < config.panelCount; i++) {
+            for (byte i = start; i < ConjauraSetup.getPanelCount(); i++) {
                 Panel thisPanel = Panel.getPanel(i);
                 if ((segmentSize + thisPanel.dataLength)<MAX_SEG_SIZE){
                     lastPanel++;
@@ -93,8 +83,6 @@ public class Segment {
                 thisSegment.dataStream.addAll(thisPanel.ledData);
                 thisSegment.dataStream.addAll(thisPanel.edgeData);
             }
-            int segLength = thisSegment.dataStream.size();
-            //System.out.println("Segment Len Create "+segLength);
         }
     }
 }
