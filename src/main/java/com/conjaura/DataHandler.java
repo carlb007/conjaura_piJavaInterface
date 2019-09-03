@@ -1,5 +1,7 @@
 package com.conjaura;
 
+
+
 public class DataHandler {
 
     private static byte[] headerData = new byte[]{0,0,0,0,0};
@@ -9,8 +11,14 @@ public class DataHandler {
     public DataHandler(){
         segments = new Segment();
         segments.createSegments();
-        segments.createSegmentData();
         dataIO = new IO();
+    }
+
+    public void initDisplay(){
+        System.out.println("Init display");
+        dataIO.resetMCU();
+        dataIO.haltTilReady();
+        dataIO.setLed("off");
         transferColourData();
         transferGammaData();
         transferPanelConfig();
@@ -43,6 +51,11 @@ public class DataHandler {
         buildAndTxConfig();
         dataIO.haltTilReady();
         System.out.println("Config setup complete");
+        try{
+            Thread.sleep(100);
+        }catch(InterruptedException e){
+            System.out.println("Wait interupted "+e.getMessage());
+        }
     }
 
     private static void transferColourData(){
@@ -55,6 +68,11 @@ public class DataHandler {
             dataIO.haltTilReady();
         }
         System.out.println("Colour setup complete");
+        try{
+            Thread.sleep(100);
+        }catch(InterruptedException e){
+            System.out.println("Wait interupted "+e.getMessage());
+        }
     }
 
     public static void transferGammaData(){
@@ -65,6 +83,11 @@ public class DataHandler {
         dataIO.spiTransfer(ColourConf.getGammaData());
         dataIO.haltTilReady();
         System.out.println("Gamma setup complete");
+        try{
+            Thread.sleep(100);
+        }catch(InterruptedException e){
+            System.out.println("Wait interupted "+e.getMessage());
+        }
     }
 
     public static void buildAndTxConfig(){
@@ -236,6 +259,11 @@ public class DataHandler {
         headerData[4] = byte5;
 
         dataIO.spiTransfer(headerData);
+        try{
+            Thread.sleep(100);
+        }catch(InterruptedException e){
+            System.out.println("Wait interupted "+e.getMessage());
+        }
     }
 
 

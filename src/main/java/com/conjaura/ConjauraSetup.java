@@ -13,7 +13,8 @@ public class ConjauraSetup {
 
     public static ConjauraSetup globalSetup;
     public static ColourConf colourSetup;
-    private DataHandler dataHandler;
+    public static DataHandler dataHandler;
+
 
     private static int panelCount;
     private static int maxFPS;
@@ -44,7 +45,6 @@ public class ConjauraSetup {
             //CREATE PANELS AND CONFIGURE LED STATES, EDGE STATES, TOUCH AND PERIPH STATES
             confParsePanelsMain(panels);
 
-            //CREATE OUR DATA HANDLER OBJECT AND BEGIN OUR INIT ROUTINE
             dataHandler = new DataHandler();
 
         } catch (FileNotFoundException e) {

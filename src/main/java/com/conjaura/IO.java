@@ -48,6 +48,13 @@ public class IO {
         setFan("off");
         setLed("off");
 
+        try {
+            Thread.sleep(1000);
+        }
+        catch(InterruptedException e){
+
+        }
+
         setPanelPower("on");
         setLed("blue");
         resetMCU();
@@ -82,6 +89,7 @@ public class IO {
         catch(InterruptedException e){
 
         }
+
     }
 
     public static void pingMCU(){
@@ -94,7 +102,7 @@ public class IO {
         while(!sigIn.isHigh()){
             setLed("red");
         }
-        setLed("off");
+        setLed("green");
         pingMCU();  //CLEAR MCU SIG STATE
     }
 

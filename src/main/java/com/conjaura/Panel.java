@@ -25,8 +25,8 @@ public class Panel {
     byte peripheralSettings;
     byte peripheralReturnSize;
     int dataLength;
-    ArrayList<Byte> ledData;
-    ArrayList<Byte> edgeData;
+    byte[] ledData;
+    byte[] edgeData;
     ArrayList<Byte> touchData;
     ArrayList<Byte> peripheralData;
 
@@ -109,7 +109,7 @@ public class Panel {
         }
 
         dataSize = (width*height)*pixelDataSize;
-        ledData = new ArrayList<Byte>((Collections.nCopies(dataSize,(byte)0)));
+        ledData = new byte[dataSize];//new ArrayList<Byte>((Collections.nCopies(dataSize,(byte)0)));
         if(edgeActive==true){
             int multiple = 0;
             if(edgeDensity==EdgeLedDensity.THREE_PER_EIGHT){
@@ -119,12 +119,13 @@ public class Panel {
                 multiple = 6;
             }
             edgeSize = ((((width * 2) + (height *2)) / 8) * multiple)*pixelDataSize;
-            edgeData = new ArrayList<Byte>((Collections.nCopies(edgeSize,(byte)0)));
+            //edgeData = new ArrayList<Byte>((Collections.nCopies(edgeSize,(byte)0)));
+            edgeData = new byte[edgeSize];
         }
         dataLength = dataSize+edgeSize;
         //System.out.println("PANEL "+id+" Size:"+dataLength);
     }
 
-    public static void setData(ArrayList<Byte> data, int id){panels.get(id).ledData = data;}
+    public static void setData(byte[] data, int id){panels.get(id).ledData = data;}
 
 }
