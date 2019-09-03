@@ -1,21 +1,19 @@
 package com.conjaura;
 
-import java.io.BufferedReader;
 import java.io.IOException;
-import java.io.InputStreamReader;
 
 class Init{
     //public static Init instance;
-    public static ConjauraSetup config;
-    public static ConjauraServer s;
+    //private static ConjauraSetup config;
+    static ConjauraServer s;
 
-    public static void main( String[] args ) throws InterruptedException , IOException
+    public static void main( String[] args ) throws IOException
     {
         //instance = new Init();
-        config = new ConjauraSetup();
+        ConjauraSetup config = new ConjauraSetup();
 
         int port = 8887; // 843 flash policy port
-        s = new ConjauraServer( port );
+        s = new ConjauraServer( port, config );
         s.start();
         System.out.println( "ChatServer started on port: " + s.getPort() );
 /*

@@ -1,38 +1,100 @@
 package com.conjaura;
 
+import java.util.ArrayList;
 
+class DataHandler {
+    private ArrayList<Segment> dataSegments;
+    ArrayList<Panel> panels;
+    private ConjauraSetup parentConfig;
+    private IO dataIO;
+    private int allSegmentsSize;
 
-public class DataHandler {
-
-    private static byte[] headerData = new byte[]{0,0,0,0,0};
-    public static Segment segments;
-    public static IO dataIO;
-
-    public DataHandler(){
-        segments = new Segment();
-        segments.createSegments();
+    DataHandler(ConjauraSetup setup){
+        parentConfig = setup;
+        dataSegments = new ArrayList<>();
+        panels = new ArrayList<>();
         dataIO = new IO();
     }
 
-    public void initDisplay(){
+    int transferFrame(){
+        createSegmentData();
+        for(Segment thisSegment : dataSegments){
+            dataIO.spiTransfer(thisSegment.dataStream);
+            dataIO.haltTilReady();
+        }
+        return allSegmentsSize;
+    }
+
+    void createSegments(){
+        byte lastPanel = 0;
+        byte startPanel = 0;
+        while(lastPanel<panels.size()) {
+            int segmentSize = 0;
+            byte start = lastPanel;
+            for(Panel thisPanel : panels.subList(start,panels.size())){
+                if ((segmentSize + thisPanel.dataLength)<Segment.MAX_SEG_SIZE){
+                    lastPanel++;
+                    segmentSize += thisPanel.dataLength;
+                }
+                else{
+                    break;
+                }
+            }
+            dataSegments.add(new Segment(startPanel, lastPanel, segmentSize));
+            allSegmentsSize += segmentSize;
+            startPanel = lastPanel;
+        }
+    }
+
+    private void createSegmentData(){
+        for(Segment thisSegment : dataSegments){
+            for(Panel thisPanel : panels.subList(thisSegment.getStartID(),thisSegment.getEndID())){
+                System.arraycopy(thisPanel.ledData, 0, thisSegment.dataStream,
+                            0, thisPanel.ledData.length);
+                if(thisPanel.edgeActive){
+                    System.arraycopy(thisPanel.edgeData, 0, thisSegment.dataStream,
+                            thisPanel.ledData.length, thisPanel.edgeData.length);
+                }
+            }
+        }
+    }
+
+    private byte[] getSegmentLengths() {
+        byte[] segmentData = new byte[dataSegments.size() * 2];
+        int pos = 0;
+        for(Segment thisSegment : dataSegments){
+            segmentData[pos++] = (byte) ((thisSegment.getSegmentLength() >> 8) & 255);
+            segmentData[pos++] = (byte) (thisSegment.getSegmentLength() & 255);
+        }
+        return segmentData;
+    }
+
+
+    void initDisplay(){
         System.out.println("Init display");
-        dataIO.resetMCU();
+        IO.resetMCU();
         dataIO.haltTilReady();
-        dataIO.setLed("off");
+        IO.setLed("off");
         transferColourData();
         transferGammaData();
         transferPanelConfig();
         prepForStreaming();
+        try {
+            Thread.sleep(100);
+        }
+        catch(InterruptedException e){
+            System.out.println( e.getMessage());
+        }
     }
 
 
-    private static void prepForStreaming(){
+    private void prepForStreaming(){
         /*START OF INIT*/
         dataIO.pingMCU();
         buildAndTxHeader("data","");
         dataIO.haltTilReady();
         //SEND DATA SEGMENT LENGTHS
-        dataIO.spiTransfer(segments.getSegmentLengths());
+        dataIO.spiTransfer(getSegmentLengths());
         dataIO.haltTilReady();
         try{
             Thread.sleep(100);
@@ -42,7 +104,7 @@ public class DataHandler {
         System.out.println("Segment setup complete");
     }
 
-    private static void transferPanelConfig(){
+    private void transferPanelConfig(){
         /*START OF PANEL CONFIG*/
         dataIO.pingMCU();
         buildAndTxHeader("config","panelSetup");
@@ -58,13 +120,13 @@ public class DataHandler {
         }
     }
 
-    private static void transferColourData(){
+    private void transferColourData(){
         /*START OF COLOUR MODE*/
         dataIO.pingMCU();
         buildAndTxHeader("config","colourSetup");
         dataIO.haltTilReady();
-        if(ColourConf.getColourMode() == ColourModes.PALETTE_COLOUR){
-            dataIO.spiTransfer(ColourConf.getPaletteData());
+        if(parentConfig.colourSetup.getColourMode() == ColourModes.PALETTE_COLOUR){
+            dataIO.spiTransfer(parentConfig.colourSetup.getPaletteData());
             dataIO.haltTilReady();
         }
         System.out.println("Colour setup complete");
@@ -75,12 +137,12 @@ public class DataHandler {
         }
     }
 
-    public static void transferGammaData(){
+    private void transferGammaData(){
         /*START OF GAMMA MODE*/
         dataIO.pingMCU();
         buildAndTxHeader("config","gammaSetup");
         dataIO.haltTilReady();
-        dataIO.spiTransfer(ColourConf.getGammaData());
+        dataIO.spiTransfer(parentConfig.colourSetup.getGammaData());
         dataIO.haltTilReady();
         System.out.println("Gamma setup complete");
         try{
@@ -90,24 +152,23 @@ public class DataHandler {
         }
     }
 
-    public static void buildAndTxConfig(){
-        byte[] configData = new byte[4*ConjauraSetup.getPanelCount()];
+    private void buildAndTxConfig(){
+        byte[] configData = new byte[4*panels.size()];
         int pos=0;
-        for(int i=0;i<ConjauraSetup.getPanelCount();i++){
-            Panel thisPanel = Panel.getPanel(i);
+        for(Panel thisPanel : panels){
             if (thisPanel.width % 8 == 0 && thisPanel.height % 8 == 0 && thisPanel.width<=32 && thisPanel.height<=32) {
 
-                byte byte1 = 0;
-                byte byte2 = 0;
-                byte byte3 = 0;
-                byte byte4 = 0;
+                byte byte1;
+                byte byte2;
+                byte byte3;
+                byte byte4;
 
                 //BYTE 1:
 
-                byte bits8_7 = 0;
-                byte bits6_5 = 0;
-                byte bits4_3 = 0;
-                byte bit2 = 0;
+                byte bits8_7;
+                byte bits6_5;
+                byte bits4_3;
+                byte bit2;
                 byte bit1 = 0;
 
                 bits8_7 = (byte)((((int)thisPanel.width / 8)-1) << 6);
@@ -117,11 +178,9 @@ public class DataHandler {
 
                 byte1 = (byte)(bits8_7 | bits6_5 | bits4_3 | bit2 | bit1);
 
-                //System.out.println( "Byte 1:"+byte1+", "+bits8_7+", "+bits6_5+", "+bits4_3+", "+bit2+" "+thisPanel.width);
-
                 // BYTE 2:
                 byte bit8= 0;
-                byte bits7_6 = 0;
+                byte bits7_6;
                 byte bits5_1 = 0;
 
                 if(thisPanel.ledActive){
@@ -154,9 +213,9 @@ public class DataHandler {
                 byte3 = (byte)(bit8 | bits7_6 | bit5 | bit4 | bit3 | bits2_1);
 
                 //BYTE4
-                byte bits8_6 = 0;
-                byte bits5_4 = 0;
-                byte bits3_2 = 0;
+                byte bits8_6;
+                byte bits5_4;
+                byte bits3_2;
                 bit1 = 0;
 
                 bits8_6 = (byte)(thisPanel.peripheralType.ordinal() << 5);
@@ -179,7 +238,8 @@ public class DataHandler {
     }
 
 
-    public static void buildAndTxHeader(String mode,String submode) {
+    private void buildAndTxHeader(String mode,String submode) {
+        byte[] headerData = new byte[]{0,0,0,0,0};
         byte hBits1_1 = 0;
         byte hBits2_1 = 0;
         byte hBits3and4_1 = 0;
@@ -191,14 +251,11 @@ public class DataHandler {
         byte byte5 = 0;
 
         if (mode.equals("data")) {
-            hBits2_2 = (byte) Segment.totalSegments;
+            hBits2_2 = (byte) dataSegments.size();
         }
         else if (mode.equals("address")){
-            hBits1_1 = 64;
-            if(submode.equals("request")){
-                hBits2_1 = 0;
-            }
-            else if(submode.equals("reset")){
+            hBits1_1 = 64; //DEFAULT FOR REQUEST MODE
+            if(submode.equals("reset")){
                 hBits2_1 = 16;
             }
             else if(submode.equals("finish")){
@@ -209,21 +266,19 @@ public class DataHandler {
             hBits1_1 = (byte) 128;
             if (submode.equals("panelSetup")) {
                 hBits2_1 = 0;
-                byte3 = (byte) ConjauraSetup.getPanelCount();
-                int configDataLen = ConjauraSetup.getPanelCount() * 4;
+                byte3 = (byte) panels.size();
+                int configDataLen = panels.size() * 4;
                 hBits2_4 = (byte) (configDataLen >> 8 & 63);
                 byte5 = (byte) (configDataLen & 255);
             }
             else if (submode.equals("colourSetup")) {
                 hBits2_1 = 16;
-                byte hBits3_1 = 0;
+                byte hBits3_1 = 0; //DEFAULT FOR TRUE COLOUR
                 byte hBits4_1 = 0;
-                if (ColourConf.getColourMode() == ColourModes.TRUE_COLOUR) {
-                    hBits3_1 = 0;
-                } else if (ColourConf.getColourMode() == ColourModes.HIGH_COLOUR) {
+                if (parentConfig.colourSetup.getColourMode() == ColourModes.HIGH_COLOUR) {
                     hBits3_1 = 4;
-                    hBits4_1 = (byte) ColourConf.getHcBiasMode().ordinal();
-                } else if (ColourConf.getColourMode() == ColourModes.PALETTE_COLOUR) {
+                    hBits4_1 = (byte) parentConfig.colourSetup.getHcBiasMode().ordinal();
+                } else if (parentConfig.colourSetup.getColourMode() == ColourModes.PALETTE_COLOUR) {
                     hBits3_1 = 8;
                 }
 
@@ -231,19 +286,19 @@ public class DataHandler {
 
                 hBits3and4_1 = (byte) (hBits3_1 | hBits4_1);
 
-                hBits2_2 = (byte) (ConjauraSetup.getBamBits().ordinal());
-                byte3 = (byte) (ColourConf.getPaletteSize());
+                hBits2_2 = (byte) (parentConfig.getBamBits().ordinal());
+                byte3 = (byte) (parentConfig.colourSetup.getPaletteSize());
 
-                if (ColourConf.getColourMode() == ColourModes.PALETTE_COLOUR) {
-                    int paletteLen = (ColourConf.getPaletteSize() + 1) * 3;
+                if (parentConfig.colourSetup.getColourMode() == ColourModes.PALETTE_COLOUR) {
+                    int paletteLen = (parentConfig.colourSetup.getPaletteSize() + 1) * 3;
                     hBits2_4 = (byte) (paletteLen >> 8 & 63);
                     byte5 = (byte) (paletteLen & 255);
                 }
             }
             else if (submode.equals("gammaSetup")) {
                 hBits2_1 = 32;
-                hBits2_4 = (byte) (ColourConf.getGammaSize() >> 8 & 63);
-                byte5 = (byte) (ColourConf.getGammaSize() & 255);
+                hBits2_4 = (byte) (parentConfig.colourSetup.getGammaSize() >> 8 & 63);
+                byte5 = (byte) (parentConfig.colourSetup.getGammaSize() & 255);
             }
             else {
                 throw new IllegalArgumentException("Invalid primary config mode");
@@ -264,6 +319,7 @@ public class DataHandler {
         }catch(InterruptedException e){
             System.out.println("Wait interupted "+e.getMessage());
         }
+        System.out.println("Header Sent");
     }
 
 

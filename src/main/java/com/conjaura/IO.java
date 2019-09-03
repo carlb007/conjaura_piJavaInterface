@@ -1,6 +1,5 @@
 package com.conjaura;
 import java.io.*;
-import java.util.ArrayList;
 
 import com.pi4j.io.gpio.*;
 import com.pi4j.io.spi.SpiChannel;
@@ -8,11 +7,11 @@ import com.pi4j.io.spi.SpiDevice;
 import com.pi4j.io.spi.SpiFactory;
 import com.pi4j.io.spi.SpiMode;
 
-public class IO {
-    static final int SPI_SPEED = 20000000;
+class IO {
+    private static final int SPI_SPEED = 20000000;
 
-    final GpioController gpio = GpioFactory.getInstance();
-    public static SpiDevice spi = null;
+    private final GpioController gpio = GpioFactory.getInstance();
+    private SpiDevice spi = null;
 
     private static GpioPinDigitalOutput ledRed;
     private static GpioPinDigitalOutput ledGreen;
@@ -25,12 +24,12 @@ public class IO {
     private static GpioPinDigitalOutput sigOut;
     private static GpioPinDigitalInput sigIn;
 
-    public IO(){
+    IO(){
         try {
             spi = SpiFactory.getInstance(SpiChannel.CS0, SPI_SPEED, SpiMode.MODE_2);
         }
         catch(IOException e){
-
+            System.out.println("SPI Init error: "+e.getMessage());
         }
 
         ledRed = gpio.provisionDigitalOutputPin(RaspiPin.GPIO_05,"Red", PinState.HIGH);
@@ -52,7 +51,7 @@ public class IO {
             Thread.sleep(1000);
         }
         catch(InterruptedException e){
-
+            System.out.println(e.getMessage());
         }
 
         setPanelPower("on");
@@ -62,7 +61,7 @@ public class IO {
         System.out.println("MCU Ready To Roll");
     }
 
-    public static void setPanelPower(String state){
+    private static void setPanelPower(String state){
         if(state.equals("on")){
             pwr.setState(PinState.HIGH);
         }
@@ -71,7 +70,7 @@ public class IO {
         }
     }
 
-    public static void setFan(String state){
+    private static void setFan(String state){
         if(state.equals("on")){
             fan.setState(PinState.HIGH);
         }
@@ -80,25 +79,25 @@ public class IO {
         }
     }
 
-    public static void resetMCU(){
+    static void resetMCU(){
         try {
             rst.setState(PinState.LOW);
             Thread.sleep(500);
             rst.setState(PinState.HIGH);
         }
         catch(InterruptedException e){
-
+            System.out.println(e.getMessage());
         }
 
     }
 
-    public static void pingMCU(){
+    void pingMCU(){
         sigOut.setState(PinState.HIGH);
         //Thread.sleep(500);
         sigOut.setState(PinState.LOW);
     }
 
-    public void haltTilReady(){
+    void haltTilReady(){
         while(!sigIn.isHigh()){
             setLed("red");
         }
@@ -106,7 +105,7 @@ public class IO {
         pingMCU();  //CLEAR MCU SIG STATE
     }
 
-    public static void setLed(String colour){
+    static void setLed(String colour){
         ledRed.setState(PinState.HIGH);
         ledBlue.setState(PinState.HIGH);
         ledGreen.setState(PinState.HIGH);
@@ -135,7 +134,7 @@ public class IO {
         }
     }
 
-    public byte[] spiTransfer(byte[] data){
+    byte[] spiTransfer(byte[] data){
         try {
             byte[] result = spi.write(data);
             return result;

@@ -13,14 +13,16 @@ import java.nio.ByteBuffer;
 
 public class ConjauraServer extends WebSocketServer {
     SocketPermission p1,p2;
-    TestStream testStream = new TestStream();
-    public ConjauraServer( int port ) throws IOException {
+    TestStream testStream;
+    ServerSocket serverSocket = null;
+    ConjauraSetup parentConfig;
+    public ConjauraServer( int port, ConjauraSetup config ) throws IOException {
         super( new InetSocketAddress( port ) );
-
+        parentConfig = config;
         System.out.println(InetAddress.getLocalHost().getHostName());
         p1 = new SocketPermission(InetAddress.getLocalHost().getHostName()+":"+port, "connect,accept,listen,resolve");
         p2 = new SocketPermission(InetAddress.getLocalHost().getHostName()+":80", "connect,accept,listen,resolve");
-        ServerSocket serverSocket = null;
+
         try {
             System.out.println(port);
             serverSocket = new ServerSocket(); // <-- create an unbound socket first
@@ -51,6 +53,12 @@ public class ConjauraServer extends WebSocketServer {
     public void onClose( WebSocket conn, int code, String reason, boolean remote ) {
         broadcast( conn + " has left the room!" );
         System.out.println( conn + " has left the room!" );
+        try {
+            serverSocket.close();
+        }
+        catch(IOException e){
+            System.out.println( "not closed" );
+        }
     }
 
     @Override
@@ -67,6 +75,7 @@ public class ConjauraServer extends WebSocketServer {
         if( message.equals( "run" ) ) {
             //CREATE OUR DATA HANDLER OBJECT AND BEGIN OUR INIT ROUTINE
             System.out.println( "Run routine");
+            testStream = new TestStream(parentConfig);
             testStream.run();
         }
     }

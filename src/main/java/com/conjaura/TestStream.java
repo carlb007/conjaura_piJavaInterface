@@ -1,36 +1,30 @@
 package com.conjaura;
 
-import java.util.ArrayList;
-import java.util.Collections;
 
-public class TestStream {
-    public TestStream(){}
+class TestStream {
+    private ConjauraSetup parentConfig;
+    TestStream(ConjauraSetup config){
+        parentConfig = config;
+    }
 
-    public void run(){
+    void run(){
         /*START OF STREAM*/
+        /*
         try {
             Thread.sleep(500);
         }
         catch(InterruptedException e){
-
+            System.out.println( e.getMessage());
         }
-        Init.config.dataHandler.initDisplay();
-        try {
-            Thread.sleep(100);
-        }
-        catch(InterruptedException e){
-
-        }
+        */
+        parentConfig.dataHandler.initDisplay();
         System.out.println( "Stream start");
         int loopsToRun = 2000;
         int rStart = 0;
-        int gStart = 767;
-        int loopsForSpeed = 1000;
+        //int gStart = 767;
+        int loopsForSpeed = 100;
         long start = System.currentTimeMillis();
         int tallyBytes = 0;
-        int panelCount = ConjauraSetup.getPanelCount();
-        int segmentCount = Init.config.dataHandler.segments.dataSegments.size();
-        System.out.println("segs: "+segmentCount);
         byte[] panelData = new byte[768];//ArrayList<Byte>((Collections.nCopies(768,(byte)1)));
         for(int loops=0;loops<loopsToRun;loops++){
 
@@ -48,27 +42,21 @@ public class TestStream {
                 rStart=0;
             }
 
-            for(int x=0;x<panelCount;x++){
-                Panel.setData(panelData,x);
+            for(Panel thisPanel : parentConfig.dataHandler.panels){
+                thisPanel.setData(panelData);
             }
-            DataHandler.segments.createSegmentData();
-            for(int segment=0;segment<segmentCount;segment++){
-                //System.out.println("seg len: "+DataHandler.segments.getSegmentData(segment).length);
-                DataHandler.dataIO.spiTransfer(DataHandler.segments.getSegmentData(segment));
-                tallyBytes += DataHandler.segments.getSegmentLength(segment);
-                loopsForSpeed--;
-                if(loopsForSpeed==0){
-                    long end = System.currentTimeMillis();
-                    float timeLen = (end-start) / 1000F;
-                    int bytesPerSecond = (int)(tallyBytes/timeLen);
-                    System.out.println(tallyBytes+" Bytes in "+timeLen+"seconds ("+(bytesPerSecond/1000)+"KB per second)");
-                    loopsForSpeed = 1000;
-                    tallyBytes = 0;
-                    start = System.currentTimeMillis();
-                }
-                DataHandler.dataIO.haltTilReady();
+
+            tallyBytes += parentConfig.dataHandler.transferFrame();
+            loopsForSpeed--;
+            if(loopsForSpeed==0){
+                long end = System.currentTimeMillis();
+                float timeLen = (end-start) / 1000F;
+                int bytesPerSecond = (int)(tallyBytes/timeLen);
+                System.out.println(tallyBytes+" Bytes in "+timeLen+"seconds ("+(bytesPerSecond/1000)+"KB per second)");
+                loopsForSpeed = 100;
+                tallyBytes = 0;
+                start = System.currentTimeMillis();
             }
-            //System.out.println("done loop");
         }
     }
 }

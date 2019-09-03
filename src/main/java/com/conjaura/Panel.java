@@ -1,18 +1,16 @@
 package com.conjaura;
 
 import java.util.ArrayList;
-import java.util.Collections;
 
-public class Panel {
-    static int index = 0;
-    public static ArrayList<Panel> panels = new ArrayList<Panel>();
+class Panel {
 
-    int id;
+
     byte width;
     byte height;
     ScanLines scanLines;
     PanelOrientation orientation;
     boolean ledActive;
+    private ColourModes panelColourMode;
     PanelLedThrottle throttle;
     boolean touchEnabled;
     byte touchChannelsFlag;
@@ -27,11 +25,11 @@ public class Panel {
     int dataLength;
     byte[] ledData;
     byte[] edgeData;
+
     ArrayList<Byte> touchData;
     ArrayList<Byte> peripheralData;
 
-    public Panel(byte w, byte h){
-        id = index;
+    Panel(byte w, byte h, ColourModes cMode){
         orientation = PanelOrientation.UP;
         throttle = PanelLedThrottle.NONE;
         peripheralType = PeripheralTypes.NONE;
@@ -39,38 +37,30 @@ public class Panel {
         edgeActive = false;
         ledActive = false;
         touchEnabled = false;
-        touchChannelsFlag = 0;
-        touchChannels = 0;
         dataLength = 0;
+        panelColourMode = cMode;
         setSize(w,h);
-        panels.add(this);
-        index++;
+        //panels.add(this);
     }
 
-    public static Panel getPanel(int id){
-        return panels.get(id);
-    }
-
-
-    public void setSize(byte w, byte h){
+    private void setSize(byte w, byte h){
         width = w;
         height = h;
-        System.out.println(w+" "+h);
         calcDataSize();
     }
 
-    public void disableLeds(){ledActive = false;}
+    void disableLeds(){ledActive = false;}
 
-    public void enableLeds(){ledActive = true;}
+    void enableLeds(){ledActive = true;}
 
-    public void setOrientation(PanelOrientation orient){orientation = orient;}
+    void setOrientation(PanelOrientation orient){orientation = orient;}
 
-    public void setScanLines(ScanLines scan){scanLines = scan;}
+    void setScanLines(ScanLines scan){scanLines = scan;}
 
-    public void setThrottle(PanelLedThrottle throt){throttle = throt;}
+    void setThrottle(PanelLedThrottle throt){throttle = throt;}
 
-    public void setTouch(boolean enable, byte channels, TouchSensitivity sensitivity){
-        touchEnabled = enable;
+    void setTouch(byte channels, TouchSensitivity sensitivity){
+        touchEnabled = true;
         if(channels == 16){
             touchChannelsFlag = 0;
         }
@@ -78,16 +68,18 @@ public class Panel {
         touchDataSize = sensitivity;
     }
 
-    public void setEdge(boolean enable, EdgeLedThrottle throttle, EdgeLedDensity density){
-        edgeActive = enable;
+    void disableTouch(){touchEnabled = false;}
+
+    void setEdge(EdgeLedThrottle throttle, EdgeLedDensity density){
+        edgeActive = true;
         edgeThrottle = throttle;
         edgeDensity = density;
         calcDataSize();
     }
 
-    public void disableEdge(){edgeActive = false;}
+    void disableEdge(){edgeActive = false;}
 
-    public void setPeripheral(PeripheralTypes type, byte settings, byte size){
+    void setPeripheral(PeripheralTypes type, byte settings, byte size){
         peripheralType = type;
         peripheralSettings = settings;
         peripheralReturnSize = size;
@@ -98,34 +90,31 @@ public class Panel {
         int dataSize;
         int edgeSize = 0;
 
-        if(ColourConf.getColourMode()==ColourModes.TRUE_COLOUR){
+        if(panelColourMode==ColourModes.TRUE_COLOUR){
             pixelDataSize=3;
         }
-        else if(ColourConf.getColourMode()==ColourModes.HIGH_COLOUR){
+        else if(panelColourMode==ColourModes.HIGH_COLOUR){
             pixelDataSize=2;
         }
         else{
             pixelDataSize = 1;
         }
-
         dataSize = (width*height)*pixelDataSize;
-        ledData = new byte[dataSize];//new ArrayList<Byte>((Collections.nCopies(dataSize,(byte)0)));
-        if(edgeActive==true){
+        ledData = new byte[dataSize];
+        if(edgeActive){
             int multiple = 0;
             if(edgeDensity==EdgeLedDensity.THREE_PER_EIGHT){
                 multiple = 3;
             }
-            else if(edgeDensity==EdgeLedDensity.THREE_PER_EIGHT){
+            else if(edgeDensity==EdgeLedDensity.SIX_PER_EIGHT){
                 multiple = 6;
             }
             edgeSize = ((((width * 2) + (height *2)) / 8) * multiple)*pixelDataSize;
-            //edgeData = new ArrayList<Byte>((Collections.nCopies(edgeSize,(byte)0)));
             edgeData = new byte[edgeSize];
         }
         dataLength = dataSize+edgeSize;
-        //System.out.println("PANEL "+id+" Size:"+dataLength);
     }
 
-    public static void setData(byte[] data, int id){panels.get(id).ledData = data;}
+    void setData(byte[] data){ledData = data;}
 
 }
